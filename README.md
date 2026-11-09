@@ -8,24 +8,16 @@ Custom Home Assistant integration that polls Ubuntu servers securely over SSH, w
 - CPU %, memory %, root disk usage/free, load average, uptime, available apt upgrades, failed systemd services, reboot required.
 - Dedicated SSH Ed25519 identity per integration entry (generated during setup).
 - A copyable `curl | sudo bash` command installs/updates an Ubuntu monitoring account, root-owned collectors, and a narrowly scoped sudoers rule.
-- Host key fingerprint pinning: configuration refuses to connect until the SSH server fingerprint is supplied and verified.
+- No fingerprint entry in the setup flow: the first successful SSH connection pins the observed host key (trust on first use); subsequent connections reject host-key changes.
 - No root SSH login, passwords, or broad `NOPASSWD: ALL` access.
 
 ## Installation
 
 Copy `custom_components/ubuntu_linux` to `<config>/custom_components/ubuntu_linux` on Home Assistant. Restart Home Assistant. Go to **Settings → Devices & services → Add integration → Ubuntu Linux SSH**.
 
-Enter the Ubuntu host and SSH port. The integration generates a dedicated private/public SSH key pair and displays a bootstrap command containing **only the public key**. Review [scripts/install.sh](scripts/install.sh) before executing the command on the Ubuntu server with sudo. The installer also downloads the two root-owned monitoring scripts from this repository. Run the bootstrap command again whenever you want to update those scripts or rotate the authorized key.
+Enter a **Server Name**, Ubuntu hostname or IP, SSH port, and monitoring account. The Server Name is used for the Home Assistant device. The integration generates a dedicated private/public SSH key pair and displays a bootstrap command containing **only the public key**. Review [scripts/install.sh](scripts/install.sh) before executing the command on the Ubuntu server with sudo. The installer also downloads the two root-owned monitoring scripts from this repository. Run the bootstrap command again whenever you want to update those scripts or rotate the authorized key.
 
-Get the **server's** SSH host fingerprint on Ubuntu with:
-
-```bash
-sudo ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub -E sha256
-```
-
-Enter the `SHA256:...` value (not the monitoring user key fingerprint) in the final setup step. The integration tests SSH authentication and the collector before creating the device.
-
-### Permissions
+After running the installer, click **Submit** in Home Assistant. The integration tests SSH access and discovers the server's host key automatically. No fingerprint needs to be entered.\n\n### Permissions
 
 The installer creates a system account (`ha-monitor` by default), an `authorized_keys` block with OpenSSH `restrict` restrictions, and the exact sudoers rule:
 
@@ -39,7 +31,7 @@ Only the fixed root-owned helper can execute without a password, and it accepts 
 
 - The private key is stored in the Home Assistant config entry database. Protect Home Assistant backups and `.storage`; do not commit them.
 - The one-liner downloads executable code as root. Audit and pin the URL to a reviewed commit for high-assurance environments. Updating from `main` always executes its latest content.
-- Verify the server fingerprint out of band. A changed server host key requires reconfiguration; do not disable verification.
+- **Trust on first use (TOFU):** the first SSH connection pins the key that the remote host presents; later key changes are rejected. The first connection is susceptible to a man-in-the-middle attack if the network is compromised. For high-assurance environments verify the observed key separately.
 - Protect the Home Assistant instance: anyone controlling this integration's private key can access the monitoring account.
 - The monitor is **read-only**; it does not expose arbitrary command execution or systemd control.
 - The first version is intended for Ubuntu with systemd, apt, Python 3, OpenSSH, and sudo.

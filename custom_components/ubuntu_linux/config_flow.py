@@ -1,4 +1,4 @@
-"""Two-step setup: generate SSH key, install account, verify host identity."""
+"""Configure an Ubuntu server with a generated installer command."""
 import re
 import shlex
 
@@ -6,10 +6,10 @@ import asyncssh
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.data_entry_flow import FlowResult
-from .const import DOMAIN, DEFAULT_PORT, DEFAULT_USER
-from .ssh import fetch_metrics
 
-FINGERPRINT = re.compile(r"^SHA256:[A-Za-z0-9+/]{43}=?$")
+from .const import DOMAIN, DEFAULT_PORT, DEFAULT_USER
+from .ssh import fetch_metrics_with_host_key
+
 USERNAME = re.compile(r"^[a-z_][a-z0-9_-]{0,30}$")
 
 
@@ -26,21 +26,29 @@ class UbuntuLinuxConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_user(self, user_input=None) -> FlowResult:
         errors = {}
         if user_input is not None:
+            name = user_input["name"].strip()
             host = user_input["host"].strip()
             username = user_input["username"].strip()
-            if not host or any(ch.isspace() for ch in host) or not USERNAME.fullmatch(username):
+            if (not name or not host or any(ch.isspace() for ch in host)
+                    or not USERNAME.fullmatch(username)):
                 errors["base"] = "invalid_input"
             else:
                 await self.async_set_unique_id(f"{host.lower()}:{user_input['port']}")
                 self._abort_if_unique_id_configured()
-                self.details = {"host": host, "port": user_input["port"], "username": username}
+                self.details = {
+                    "name": name, "host": host,
+                    "port": user_input["port"], "username": username,
+                }
                 key = asyncssh.generate_private_key("ssh-ed25519")
                 self.private_key = key.export_private_key().decode("utf-8")
                 self.public_key = key.export_public_key().decode("utf-8").strip()
                 return await self.async_step_install()
         schema = vol.Schema({
+            vol.Required("name"): str,
             vol.Required("host"): str,
-            vol.Required("port", default=DEFAULT_PORT): vol.All(vol.Coerce(int), vol.Range(min=1, max=65535)),
+            vol.Required("port", default=DEFAULT_PORT): vol.All(
+                vol.Coerce(int), vol.Range(min=1, max=65535)
+            ),
             vol.Required("username", default=DEFAULT_USER): str,
         })
         return self.async_show_form(step_id="user", data_schema=schema, errors=errors)
@@ -48,23 +56,19 @@ class UbuntuLinuxConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_install(self, user_input=None) -> FlowResult:
         errors = {}
         if user_input is not None:
-            fingerprint = user_input["fingerprint"].strip()
-            if not FINGERPRINT.fullmatch(fingerprint):
-                errors["base"] = "invalid_fingerprint"
+            try:
+                _, fingerprint = await fetch_metrics_with_host_key(
+                    self.details["host"], self.details["port"],
+                    self.details["username"], self.private_key,
+                )
+            except Exception:
+                errors["base"] = "cannot_connect"
             else:
-                try:
-                    await fetch_metrics(
-                        self.details["host"], self.details["port"], self.details["username"],
-                        self.private_key, fingerprint,
-                    )
-                except Exception:
-                    errors["base"] = "cannot_connect"
-                else:
-                    return self.async_create_entry(
-                        title=self.details["host"],
-                        data={**self.details, "private_key": self.private_key,
-                              "fingerprint": fingerprint},
-                    )
+                return self.async_create_entry(
+                    title=self.details["name"],
+                    data={**self.details, "private_key": self.private_key,
+                          "fingerprint": fingerprint},
+                )
         command = (
             "curl -fsSL https://raw.githubusercontent.com/ricobach/HA-UbuntuLinux/main/scripts/install.sh"
             " | sudo bash -s -- " + shlex.quote(self.public_key) + " " +
@@ -72,7 +76,7 @@ class UbuntuLinuxConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         )
         return self.async_show_form(
             step_id="install",
-            data_schema=vol.Schema({vol.Required("fingerprint"): str}),
+            data_schema=vol.Schema({}),
             errors=errors,
             description_placeholders={"command": command},
         )

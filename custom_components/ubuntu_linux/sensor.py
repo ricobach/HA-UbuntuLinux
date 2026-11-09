@@ -33,7 +33,7 @@ class UbuntuSensor(CoordinatorEntity, SensorEntity):
     @property
     def device_info(self):
         return DeviceInfo(identifiers={(DOMAIN, self.coordinator.entry.entry_id)},
-                          name=self.coordinator.data.get("hostname", self.coordinator.entry.title),
+                          name=self.coordinator.entry.title,
                           manufacturer="Ubuntu", model=self.coordinator.data.get("os", "Linux"))
 
     @property
