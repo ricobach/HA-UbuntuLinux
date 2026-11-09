@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 """Collect safe, bounded Ubuntu metrics as the unprivileged monitor account."""
+
+MONITOR_VERSION = "0.2.0"
 import json
 import os
 import platform
@@ -61,6 +63,7 @@ def main():
             pass
     print(json.dumps({
         "schema": 1,
+        "monitor_version": MONITOR_VERSION,
         "hostname": socket.gethostname(),
         "os": platform.platform(),
         "cpu_percent": cpu_percent(),

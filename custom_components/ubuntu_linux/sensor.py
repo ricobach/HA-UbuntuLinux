@@ -5,6 +5,7 @@ from homeassistant.helpers.entity import DeviceInfo
 from .const import DOMAIN
 
 DESCRIPTIONS = (
+    SensorEntityDescription(key="monitor_version", name="Monitor script version"),
     SensorEntityDescription(key="cpu_percent", name="CPU usage", native_unit_of_measurement="%", state_class=SensorStateClass.MEASUREMENT),
     SensorEntityDescription(key="memory_percent", name="Memory usage", native_unit_of_measurement="%", state_class=SensorStateClass.MEASUREMENT),
     SensorEntityDescription(key="disk_percent", name="Root disk usage", native_unit_of_measurement="%", state_class=SensorStateClass.MEASUREMENT),
