@@ -31,6 +31,10 @@ Anyone with the URL can download and inspect the installer until it expires or s
 
 The integrated copy page is still available as a link in the installation dialog. Existing monitored hosts are unaffected. To refresh the Ubuntu-side script later, use the separate updater in the section below.
 
+## Human-readable uptime
+
+The **Uptime** sensor displays elapsed time as `70d 0h 35m 19s` instead of a numeric seconds value. The original raw value remains available as the `uptime_seconds` state attribute on that sensor. An additional **Uptime seconds** numeric sensor is created but disabled by default; enable it in entity settings if you need a numeric state for time-series statistics or automations. No Ubuntu-side script update is necessary for this change.
+
 ## Integration logo
 
 Home Assistant 2026.3+ reads the Ubuntu icon and logo from `custom_components/ubuntu_linux/brand/`.
