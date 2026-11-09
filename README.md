@@ -28,10 +28,10 @@ The **Updates available** sensor counts packages in the local APT cache (`apt li
 
 ### System update alert in Home Assistant
 
-The integration provides both:
+The integration provides three update-related entities:
 
 - **Updates available** (numeric sensor): number of upgradable APT packages.
-- **System updates available** (binary sensor): `on` when the package count is greater than zero, `off` when zero, and `unknown` when the count cannot be read. Its `package_count` attribute contains the count.
+- **Ubuntu system updates** (read-only Update entity): appears in Home Assistant's update interface when upgrades are pending. Its installed/latest version labels indicate **counts**, not Ubuntu release versions. No remote installation feature is enabled.\n- **System updates available** (binary sensor): `on` when the package count is greater than zero, `off` when zero, and `unknown` when the count cannot be read. Its `package_count` attribute contains the count.
 
 To notify when updates first become available, create an automation using your actual entity ID and mobile notification service:
 
@@ -53,7 +53,7 @@ actions:
 mode: single
 ```
 
-This alerts when the sensor transitions to `on`, including after an unavailable or unknown state. It does not automatically upgrade the system. APT indexes must still be refreshed regularly for fresh update counts.
+You can alternatively create an automation triggered by the state of `update.<your_server>_ubuntu_system_updates` changing to `on`. Home Assistant's Update entity has no install action for this integration.\n\nThis alerts when the sensor transitions to `on`, including after an unavailable or unknown state. It does not automatically upgrade the system. APT indexes must still be refreshed regularly for fresh update counts.
 
 ### Updating the Ubuntu monitoring scripts
 

@@ -4,7 +4,7 @@ from homeassistant.exceptions import ConfigEntryNotReady
 from .const import DOMAIN
 from .coordinator import UbuntuCoordinator
 
-PLATFORMS = [Platform.SENSOR, Platform.BINARY_SENSOR]
+PLATFORMS = [Platform.SENSOR, Platform.BINARY_SENSOR, Platform.UPDATE]
 
 
 async def async_setup_entry(hass, entry):
