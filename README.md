@@ -5,7 +5,7 @@ Custom Home Assistant integration that polls Ubuntu servers securely over SSH, w
 ## Features
 
 - One Home Assistant device per host; polls every 60 seconds.
-- CPU %, memory %, root disk usage/free, load average, uptime, available apt upgrades, failed systemd services, reboot required, and installed monitor script version.
+- CPU %, memory %, root disk usage/free, load average, uptime, available apt upgrades (count and alert binary sensor), failed systemd services, reboot required, and installed monitor script version.
 - Dedicated SSH Ed25519 identity per integration entry (generated during setup).
 - A copyable `curl | sudo bash` command installs/updates an Ubuntu monitoring account, root-owned collectors, and a narrowly scoped sudoers rule.
 - No fingerprint entry in the setup flow: the first successful SSH connection pins the observed host key (trust on first use); subsequent connections reject host-key changes.
@@ -20,6 +20,35 @@ Enter a **Server Name**, Ubuntu hostname or IP, SSH port, and monitoring account
 Copy the generated command from the read-only **Installation command** field (select the text and use Ctrl+C / Cmd+C), execute it on Ubuntu, then click **Submit** in Home Assistant. The integration tests SSH access and discovers the server's host key automatically. No fingerprint needs to be entered.\n\n### Ubuntu updates and reboot monitoring
 
 The **Updates available** sensor counts packages in the local APT cache (`apt list --upgradable`). It does not refresh APT indexes automatically; use Ubuntu's regular background APT updates or run `sudo apt update` to refresh those indexes. The **Reboot required** binary sensor checks for `/var/run/reboot-required`. Neither sensor installs packages nor reboots the server.
+
+### System update alert in Home Assistant
+
+The integration provides both:
+
+- **Updates available** (numeric sensor): number of upgradable APT packages.
+- **System updates available** (binary sensor): `on` when the package count is greater than zero, `off` when zero, and `unknown` when the count cannot be read. Its `package_count` attribute contains the count.
+
+To notify when updates first become available, create an automation using your actual entity ID and mobile notification service:
+
+```yaml
+alias: Ubuntu system updates available
+description: Notify when an Ubuntu server has upgradable packages
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.ubuntu_production_system_updates_available
+    to: "on"
+conditions: []
+actions:
+  - action: notify.mobile_app_your_phone
+    data:
+      title: "Ubuntu updates available"
+      message: >-
+        {{ state_attr('binary_sensor.ubuntu_production_system_updates_available',
+                      'package_count') }} packages can be upgraded on Ubuntu Production.
+mode: single
+```
+
+This alerts when the sensor transitions to `on`, including after an unavailable or unknown state. It does not automatically upgrade the system. APT indexes must still be refreshed regularly for fresh update counts.
 
 ### Updating the Ubuntu monitoring scripts
 

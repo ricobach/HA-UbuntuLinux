@@ -6,6 +6,7 @@ from .const import DOMAIN
 
 DESCRIPTIONS = (
     BinarySensorEntityDescription(key="reboot_required", name="Reboot required"),
+    BinarySensorEntityDescription(key="system_updates_available", name="System updates available"),
 )
 
 
@@ -23,11 +24,25 @@ class UbuntuBinarySensor(CoordinatorEntity, BinarySensorEntity):
 
     @property
     def device_info(self):
-        return DeviceInfo(identifiers={(DOMAIN, self.coordinator.entry.entry_id)},
-                          name=self.coordinator.entry.title,
-                          manufacturer="Ubuntu", model=self.coordinator.data.get("os", "Linux"))
+        return DeviceInfo(
+            identifiers={(DOMAIN, self.coordinator.entry.entry_id)},
+            name=self.coordinator.entry.title,
+            manufacturer="Ubuntu",
+            model=self.coordinator.data.get("os", "Linux"),
+        )
 
     @property
     def is_on(self):
+        if self.entity_description.key == "system_updates_available":
+            count = self.coordinator.data.get("updates_available")
+            # Unknown must not be interpreted as 'no updates'.
+            return count > 0 if isinstance(count, (int, float)) and not isinstance(count, bool) else None
+
         value = self.coordinator.data.get(self.entity_description.key)
         return bool(value) if value is not None else None
+
+    @property
+    def extra_state_attributes(self):
+        if self.entity_description.key == "system_updates_available":
+            return {"package_count": self.coordinator.data.get("updates_available")}
+        return None
