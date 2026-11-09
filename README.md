@@ -24,14 +24,14 @@ Enter a **Server Name**, Ubuntu hostname or IP, SSH port, and monitoring account
 
 Copy the generated command from the read-only **Installation command** field (select the text and use Ctrl+C / Cmd+C), execute it on Ubuntu, then click **Submit** in Home Assistant. The integration tests SSH access and discovers the server's host key automatically. No fingerprint needs to be entered.\n\n### Ubuntu updates and reboot monitoring
 
-The **Updates available** sensor counts packages in the local APT cache (`apt list --upgradable`). It does not refresh APT indexes automatically; use Ubuntu's regular background APT updates or run `sudo apt update` to refresh those indexes. The **Reboot required** binary sensor checks for `/var/run/reboot-required`. Neither sensor installs packages nor reboots the server.
+The **Updates available** sensor counts packages in the local APT cache (`apt list --upgradable`). Monitor script v0.3.0 also returns package names, installed versions, available versions and the Ubuntu release to Home Assistant. It does not refresh APT indexes automatically; use Ubuntu's regular background APT updates or run `sudo apt update` to refresh those indexes. The **Reboot required** binary sensor checks for `/var/run/reboot-required`. Neither sensor installs packages nor reboots the server.
 
 ### System update alert in Home Assistant
 
-The integration provides three update-related entities:
+The integration provides three update-related entities (the update dialog's package list requires Ubuntu monitor script **0.3.0 or newer**):
 
 - **Updates available** (numeric sensor): number of upgradable APT packages.
-- **Ubuntu system updates** (read-only Update entity): appears in Home Assistant's update interface when upgrades are pending. Its installed/latest version labels indicate **counts**, not Ubuntu release versions. No remote installation feature is enabled.\n- **System updates available** (binary sensor): `on` when the package count is greater than zero, `off` when zero, and `unknown` when the count cannot be read. Its `package_count` attribute contains the count.
+- **Ubuntu system updates** (read-only Update entity): appears in Home Assistant's update interface when upgrades are pending. Its installed version identifies the Ubuntu release and its latest-version label indicates how many package updates are pending. **Release notes** shows the list of upgradable packages with installed and candidate versions. No remote installation feature is enabled.\n- **System updates available** (binary sensor): `on` when the package count is greater than zero, `off` when zero, and `unknown` when the count cannot be read. Its `package_count` attribute contains the count.
 
 To notify when updates first become available, create an automation using your actual entity ID and mobile notification service:
 
@@ -63,7 +63,7 @@ Run this on the monitored Ubuntu server:
 curl -fsSL https://raw.githubusercontent.com/ricobach/HA-UbuntuLinux/main/scripts/update.sh | sudo bash
 ```
 
-This replaces only `/usr/local/bin/ha-ubuntu-monitor` and `/usr/local/sbin/ha-ubuntu-monitor-root`. It does **not** replace SSH keys, modify the monitoring account, or rewrite sudoers. It downloads both files, validates Python and Bash syntax, and saves previous versions with `.bak` suffixes before installation. The **Monitor script version** sensor reports the version installed on each machine after the next poll.
+This replaces only `/usr/local/bin/ha-ubuntu-monitor` and `/usr/local/sbin/ha-ubuntu-monitor-root`. It does **not** replace SSH keys, modify the monitoring account, or rewrite sudoers. It downloads both files, validates Python and Bash syntax, and saves previous versions with `.bak` suffixes before installation. The **Monitor script version** sensor reports the version installed on each machine after the next poll. **Run the command above on every existing monitored Ubuntu server** to upgrade its collector to v0.3.0 and enable detailed APT package lists in the Home Assistant Update entity. The Home Assistant integration itself must also be updated through HACS.
 
 **Security:** Running the updater as root trusts the current contents of the repository's `main` branch. Review the changes before updating and pin the download to a reviewed commit for stronger supply-chain guarantees.
 
