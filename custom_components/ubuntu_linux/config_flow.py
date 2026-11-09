@@ -5,6 +5,7 @@ import shlex
 import asyncssh
 import voluptuous as vol
 from homeassistant import config_entries
+from homeassistant.helpers import selector
 from homeassistant.data_entry_flow import FlowResult
 
 from .const import DOMAIN, DEFAULT_PORT, DEFAULT_USER
@@ -76,7 +77,11 @@ class UbuntuLinuxConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         )
         return self.async_show_form(
             step_id="install",
-            data_schema=vol.Schema({}),
+            data_schema=vol.Schema({
+                vol.Optional("install_command", default=command): selector.TextSelector(
+                    selector.TextSelectorConfig(multiline=True, read_only=True)
+                ),
+            }),
             errors=errors,
-            description_placeholders={"command": command},
+            description_placeholders={},
         )

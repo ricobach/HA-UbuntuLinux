@@ -14,7 +14,13 @@
       },
       "install": {
         "title": "Install Ubuntu monitoring",
-        "description": "Copy and run this command on the Ubuntu server:\\n\\n```bash\\n{command}\\n```\\n\\nAfter the installer finishes, select Submit to connect and add the server. On the first successful connection the SSH server key is saved automatically; future key changes will be rejected."
+        "description": "Run the command below on your Ubuntu server, then return here and select **Submit** to verify SSH and finish setup. The server's SSH key will be remembered automatically on first connection.",
+        "data": {
+          "install_command": "Installation command (select and copy)"
+        },
+        "data_description": {
+          "install_command": "Read-only. Select the entire command and copy it to your clipboard."
+        }
       }
     },
     "error": {

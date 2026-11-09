@@ -17,7 +17,7 @@ Copy `custom_components/ubuntu_linux` to `<config>/custom_components/ubuntu_linu
 
 Enter a **Server Name**, Ubuntu hostname or IP, SSH port, and monitoring account. The Server Name is used for the Home Assistant device. The integration generates a dedicated private/public SSH key pair and displays a bootstrap command containing **only the public key**. Review [scripts/install.sh](scripts/install.sh) before executing the command on the Ubuntu server with sudo. The installer also downloads the two root-owned monitoring scripts from this repository. Run the bootstrap command again whenever you want to update those scripts or rotate the authorized key.
 
-After running the installer, click **Submit** in Home Assistant. The integration tests SSH access and discovers the server's host key automatically. No fingerprint needs to be entered.\n\n### Permissions
+Copy the generated command from the read-only **Installation command** field (select the text and use Ctrl+C / Cmd+C), execute it on Ubuntu, then click **Submit** in Home Assistant. The integration tests SSH access and discovers the server's host key automatically. No fingerprint needs to be entered.\n\n### Permissions
 
 The installer creates a system account (`ha-monitor` by default), an `authorized_keys` block with OpenSSH `restrict` restrictions, and the exact sudoers rule:
 
