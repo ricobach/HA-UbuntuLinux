@@ -11,6 +11,11 @@ Custom Home Assistant integration that polls Ubuntu servers securely over SSH, w
 - No fingerprint entry in the setup flow: the first successful SSH connection pins the observed host key (trust on first use); subsequent connections reject host-key changes.
 - No root SSH login, passwords, or broad `NOPASSWD: ALL` access.
 
+## Integration logo
+
+Home Assistant 2026.3+ reads the Ubuntu icon and logo from `custom_components/ubuntu_linux/brand/`.
+The source is [Ubuntu logoib.svg on Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Ubuntu_logoib.svg) (Bear17, CC BY-SA 4.0). See [branding attribution](custom_components/ubuntu_linux/brand/ATTRIBUTION.md). The image files are generated and committed by the [brand assets workflow](.github/workflows/build-brand.yml).
+
 ## Installation
 
 Copy `custom_components/ubuntu_linux` to `<config>/custom_components/ubuntu_linux` on Home Assistant. Restart Home Assistant. Go to **Settings → Devices & services → Add integration → Ubuntu Linux SSH**.
