@@ -14,12 +14,12 @@
       },
       "install": {
         "title": "Install Ubuntu monitoring",
-        "description": "**[Open installation command with Copy button]({copy_url})**\\n\\nA separate page opens with a one-click **Copy command** button. Paste and run it on your Ubuntu server, then return here and select **Submit** to verify SSH.\\n\\nYou can also select and copy the command from the field below. The SSH server key will be remembered on first connection.",
+        "description": "**[Open the installer with Copy button]({copy_url})**\\n\\nHome Assistant serves a temporary server-specific installation script including the generated public SSH key. Copy the command below, run it on Ubuntu, and select **Submit** to connect. The link expires in 30 minutes. Prefer HTTPS for safe installation.",
         "data": {
-          "install_command": "Installation command (select and copy)"
+          "install_command": "Install command (served by Home Assistant)"
         },
         "data_description": {
-          "install_command": "Read-only. Select the entire command and copy it to your clipboard."
+          "install_command": "Copy the full command, or open the link above to use the Copy button."
         }
       }
     },

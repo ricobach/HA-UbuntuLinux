@@ -7,9 +7,29 @@ Custom Home Assistant integration that polls Ubuntu servers securely over SSH, w
 - One Home Assistant device per host; polls every 60 seconds.
 - CPU %, memory %, root disk usage/free, load average, uptime, available apt upgrades (count and alert binary sensor), failed systemd services, reboot required, and installed monitor script version.
 - Dedicated SSH Ed25519 identity per integration entry (generated during setup).
-- A copyable `curl | sudo bash` command installs/updates an Ubuntu monitoring account, root-owned collectors, and a narrowly scoped sudoers rule.
+- A copyable `curl | sudo bash` command fetched **directly from Home Assistant** installs the Ubuntu monitoring account, root-owned collectors, and narrowly scoped sudoers rule without contacting GitHub.
 - No fingerprint entry in the setup flow: the first successful SSH connection pins the observed host key (trust on first use); subsequent connections reject host-key changes.
 - No root SSH login, passwords, or broad `NOPASSWD: ALL` access.
+
+## Home Assistant-hosted installer
+
+During setup, Home Assistant generates a temporary **30-minute**, 256-bit random enrollment token and serves a self-contained installer at:
+
+```text
+http(s)://YOUR-HA-SERVER:8123/api/ubuntu_linux/bootstrap/TOKEN
+```
+
+The copyable one-line command shown during setup is:
+
+```bash
+curl -fsSL 'http(s)://YOUR-HA-SERVER:8123/api/ubuntu_linux/bootstrap/TOKEN' | sudo bash
+```
+
+The URL is generated with Home Assistant's configured **internal URL** (Settings → System → Network). The Ubuntu host must be able to resolve and connect to that URL. Configure a suitable reachable HA internal URL before adding a host. The endpoint bundles the public SSH key and the monitoring scripts from the installed HA integration; it makes no calls to GitHub or other external servers on Ubuntu. The private SSH key is never served.
+
+Anyone with the URL can download and inspect the installer until it expires or setup succeeds. Treat it as a short-lived secret. **Prefer HTTPS with a trusted certificate**; running a root-level installer fetched over plain HTTP exposes you to script tampering by an on-path attacker. No permanent unauthenticated `/install.sh` endpoint is provided. Review the generated script before running it as root.
+
+The integrated copy page is still available as a link in the installation dialog. Existing monitored hosts are unaffected. To refresh the Ubuntu-side script later, use the separate updater in the section below.
 
 ## Integration logo
 
@@ -20,7 +40,7 @@ The source is [Ubuntu logoib.svg on Wikimedia Commons](https://commons.wikimedia
 
 Copy `custom_components/ubuntu_linux` to `<config>/custom_components/ubuntu_linux` on Home Assistant. Restart Home Assistant. Go to **Settings → Devices & services → Add integration → Ubuntu Linux SSH**.
 
-Enter a **Server Name**, Ubuntu hostname or IP, SSH port, and monitoring account. The Server Name is used for the Home Assistant device. The integration generates a dedicated private/public SSH key pair and displays a bootstrap command containing **only the public key**. Review [scripts/install.sh](scripts/install.sh) before executing the command on the Ubuntu server with sudo. The installer also downloads the two root-owned monitoring scripts from this repository. Run the bootstrap command again whenever you want to update those scripts or rotate the authorized key.
+Enter a **Server Name**, Ubuntu hostname or IP, SSH port, and monitoring account. The Server Name is used for the Home Assistant device. The integration generates a dedicated private/public SSH key pair and displays a bootstrap command containing **only the public key**. Review [scripts/install.sh](scripts/install.sh) before executing the command on the Ubuntu server with sudo. The installer also includes the two root-owned monitoring scripts bundled within the installed Home Assistant integration. Run the bootstrap command again whenever you want to update those scripts or rotate the authorized key.
 
 Open the **installation command with Copy button** link in the setup dialog to copy the exact one-line command with one click (requires browser clipboard permissions and HTTPS or localhost). A read-only selectable command field remains available as a fallback. The page is served by Home Assistant behind a random 30-minute link and contains only the generated public SSH key, never the private key. Run the command, on Ubuntu, then click **Submit** in Home Assistant. The integration tests SSH access and discovers the server's host key automatically. No fingerprint needs to be entered.\n\n### Ubuntu updates and reboot monitoring
 

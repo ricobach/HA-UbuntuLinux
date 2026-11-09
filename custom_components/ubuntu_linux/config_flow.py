@@ -1,11 +1,11 @@
 """Configure an Ubuntu server with a generated installer command."""
 import re
-import shlex
 
 import asyncssh
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.helpers import selector
+from homeassistant.helpers.network import get_url
 from homeassistant.data_entry_flow import FlowResult
 
 from .const import DOMAIN, DEFAULT_PORT, DEFAULT_USER
@@ -75,14 +75,15 @@ class UbuntuLinuxConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     data={**self.details, "private_key": self.private_key,
                           "fingerprint": fingerprint},
                 )
-        command = (
-            "curl -fsSL https://raw.githubusercontent.com/ricobach/HA-UbuntuLinux/main/scripts/install.sh"
-            " | sudo bash -s -- " + shlex.quote(self.public_key) + " " +
-            shlex.quote(self.details["username"])
-        )
         if self.install_url is None:
             register_install_view(self.hass)
-            self.install_url, self.install_token = create_install_page(self.hass, command)
+            self.install_url, self.install_token, self.install_command = (
+                create_install_page(
+                    self.hass, self.public_key, self.details["username"],
+                    get_url(self.hass, prefer_external=False),
+                )
+            )
+        command = self.install_command
         return self.async_show_form(
             step_id="install",
             data_schema=vol.Schema({
