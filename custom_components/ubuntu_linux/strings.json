@@ -14,7 +14,7 @@
       },
       "install": {
         "title": "Install Ubuntu monitoring",
-        "description": "Run the command below on your Ubuntu server, then return here and select **Submit** to verify SSH and finish setup. The server's SSH key will be remembered automatically on first connection.",
+        "description": "**[Open installation command with Copy button]({copy_url})**\\n\\nA separate page opens with a one-click **Copy command** button. Paste and run it on your Ubuntu server, then return here and select **Submit** to verify SSH.\\n\\nYou can also select and copy the command from the field below. The SSH server key will be remembered on first connection.",
         "data": {
           "install_command": "Installation command (select and copy)"
         },

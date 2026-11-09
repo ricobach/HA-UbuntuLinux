@@ -10,6 +10,7 @@ from homeassistant.data_entry_flow import FlowResult
 
 from .const import DOMAIN, DEFAULT_PORT, DEFAULT_USER
 from .ssh import fetch_metrics_with_host_key
+from .install_page import create_install_page, remove_install_page, register_install_view
 
 USERNAME = re.compile(r"^[a-z_][a-z0-9_-]{0,30}$")
 
@@ -23,6 +24,8 @@ class UbuntuLinuxConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self.details = {}
         self.private_key = ""
         self.public_key = ""
+        self.install_url = None
+        self.install_token = None
 
     async def async_step_user(self, user_input=None) -> FlowResult:
         errors = {}
@@ -65,6 +68,8 @@ class UbuntuLinuxConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             except Exception:
                 errors["base"] = "cannot_connect"
             else:
+                if self.install_token:
+                    remove_install_page(self.hass, self.install_token)
                 return self.async_create_entry(
                     title=self.details["name"],
                     data={**self.details, "private_key": self.private_key,
@@ -75,6 +80,9 @@ class UbuntuLinuxConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             " | sudo bash -s -- " + shlex.quote(self.public_key) + " " +
             shlex.quote(self.details["username"])
         )
+        if self.install_url is None:
+            register_install_view(self.hass)
+            self.install_url, self.install_token = create_install_page(self.hass, command)
         return self.async_show_form(
             step_id="install",
             data_schema=vol.Schema({
@@ -83,5 +91,5 @@ class UbuntuLinuxConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 ),
             }),
             errors=errors,
-            description_placeholders={},
+            description_placeholders={"copy_url": self.install_url},
         )
