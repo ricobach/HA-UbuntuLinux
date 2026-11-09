@@ -1,0 +1,16 @@
+{
+  "domain": "ubuntu_linux",
+  "name": "Ubuntu Linux SSH",
+  "version": "0.1.0",
+  "config_flow": true,
+  "integration_type": "device",
+  "iot_class": "local_polling",
+  "requirements": [
+    "asyncssh==2.21.1"
+  ],
+  "codeowners": [
+    "@ricobach"
+  ],
+  "documentation": "https://github.com/ricobach/HA-UbuntuLinux",
+  "issue_tracker": "https://github.com/ricobach/HA-UbuntuLinux/issues"
+}

@@ -1,0 +1,31 @@
+{
+  "title": "Ubuntu Linux SSH",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Ubuntu Linux host",
+        "description": "Enter the address of the Ubuntu host. A dedicated Ed25519 key pair will be created.",
+        "data": {
+          "host": "Host / IP address",
+          "port": "SSH port",
+          "username": "Monitoring account"
+        }
+      },
+      "install": {
+        "title": "Install monitoring account",
+        "description": "Run this command on the Ubuntu host as a privileged administrator (review the installer source first):\\n\\n{command}\\n\\nThen find the server's SSH host-key fingerprint using: sudo ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub -E sha256\\n\\nEnter the complete SHA256:... fingerprint below and submit to verify the connection.",
+        "data": {
+          "fingerprint": "SSH server host fingerprint (SHA256:...)"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "SSH connection or monitor command failed",
+      "invalid_fingerprint": "Enter an SSH SHA256 fingerprint",
+      "unknown": "Unexpected error"
+    },
+    "abort": {
+      "already_configured": "This host is already configured"
+    }
+  }
+}
