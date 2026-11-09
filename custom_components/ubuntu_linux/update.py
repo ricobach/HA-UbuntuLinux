@@ -4,7 +4,7 @@ APT does not provide one installed/latest OS version for a set of pending
 package upgrades. The version fields deliberately represent pending *counts*
 rather than Ubuntu release versions.
 """
-from homeassistant.components.update import UpdateEntity
+from homeassistant.components.update import UpdateEntity, UpdateEntityFeature
 from homeassistant.helpers.entity import DeviceInfo, EntityCategory
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
@@ -24,7 +24,7 @@ class UbuntuSystemUpdate(CoordinatorEntity, UpdateEntity):
     _attr_name = "Ubuntu system updates"
     _attr_title = "Ubuntu APT package updates"
     _attr_entity_category = EntityCategory.DIAGNOSTIC
-    _attr_supported_features = 0
+    _attr_supported_features = UpdateEntityFeature(0)
 
     def __init__(self, coordinator):
         super().__init__(coordinator)
