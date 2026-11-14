@@ -5,7 +5,11 @@ from .const import DOMAIN
 from .coordinator import UbuntuCoordinator
 from .install_page import register_install_view
 
-PLATFORMS = [Platform.SENSOR, Platform.BINARY_SENSOR, Platform.UPDATE]
+async def _async_options_updated(hass, entry):
+    await hass.config_entries.async_reload(entry.entry_id)
+
+
+PLATFORMS = [Platform.SENSOR, Platform.BINARY_SENSOR, Platform.UPDATE, Platform.BUTTON]
 
 
 async def async_setup(hass, config):
@@ -23,6 +27,7 @@ async def async_setup_entry(hass, entry):
     except Exception as exc:
         raise ConfigEntryNotReady(str(exc)) from exc
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
+    entry.async_on_unload(entry.add_update_listener(_async_options_updated))
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
 

@@ -50,8 +50,13 @@ for name in monitor.py monitor-root.sh; do
   install -o root -g root -m 755 "${tmpfile}" "${target}"
   rm -f "${tmpfile}"
 done
+tmpfile="$(mktemp)"
+curl -fsSL --proto '=https' --tlsv1.2 "${BASE}/compose_helper.py" -o "${tmpfile}"
+install -o root -g root -m 755 "${tmpfile}" /usr/local/sbin/ha-ubuntu-compose
+rm -f "${tmpfile}"
 SUDO_FILE="/etc/sudoers.d/ha-ubuntu-monitor"
 printf '%s ALL=(root) NOPASSWD: /usr/local/sbin/ha-ubuntu-monitor-root\n' "${MONITOR_USER}" > "${SUDO_FILE}"
+printf '%s ALL=(root) NOPASSWD: /usr/local/sbin/ha-ubuntu-compose status *, /usr/local/sbin/ha-ubuntu-compose up *, /usr/local/sbin/ha-ubuntu-compose down *, /usr/local/sbin/ha-ubuntu-compose service-up *, /usr/local/sbin/ha-ubuntu-compose service-stop *\n' "${MONITOR_USER}" >> "${SUDO_FILE}"
 chmod 440 "${SUDO_FILE}"
 visudo -cf "${SUDO_FILE}"
 echo "Monitoring installed for user: ${MONITOR_USER}"

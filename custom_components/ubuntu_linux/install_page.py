@@ -169,7 +169,7 @@ def _render_bootstrap(public_key, username):
         'workdir="$(mktemp -d)"',
         'trap \'rm -rf "$workdir"\' EXIT',
     ]
-    for name in ("install.sh", "monitor.py", "monitor-root.sh"):
+    for name in ("install.sh", "monitor.py", "monitor-root.sh", "compose_helper.py"):
         encoded = base64.b64encode((assets / name).read_bytes()).decode("ascii")
         parts.append(
             f'base64 -d > "$workdir/{name}" <<\'HA_UBUNTU_ASSET_END\'\n'

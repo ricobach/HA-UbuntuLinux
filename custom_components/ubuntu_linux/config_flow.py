@@ -1,5 +1,6 @@
 """Configure an Ubuntu server with a generated installer command."""
 import re
+import shlex
 
 import asyncssh
 import voluptuous as vol
@@ -93,4 +94,60 @@ class UbuntuLinuxConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             }),
             errors=errors,
             description_placeholders={"copy_url": self.install_url},
+        )
+
+    @staticmethod
+    def async_get_options_flow(config_entry):
+        return UbuntuComposeOptionsFlow()
+
+
+class UbuntuComposeOptionsFlow(config_entries.OptionsFlow):
+    """Authorize one Docker Compose file through an administrator on Ubuntu."""
+
+    def __init__(self):
+        self.values = {}
+
+    async def async_step_init(self, user_input=None):
+        errors = {}
+        if user_input is not None:
+            project = user_input["compose_project"].strip()
+            path = user_input["compose_file"].strip()
+            if not project and not path:
+                return self.async_create_entry(
+                    title="", data={"compose_project": "", "compose_file": ""}
+                )
+            if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,127}", project):
+                errors["base"] = "invalid_project"
+            elif not path.startswith("/") or "\\x00" in path or "\\n" in path:
+                errors["base"] = "invalid_path"
+            else:
+                self.values = {"compose_project": project, "compose_file": path}
+                return await self.async_step_register()
+        schema = vol.Schema({
+            vol.Optional(
+                "compose_project",
+                default=self.config_entry.options.get("compose_project", ""),
+            ): str,
+            vol.Optional(
+                "compose_file",
+                default=self.config_entry.options.get("compose_file", ""),
+            ): str,
+        })
+        return self.async_show_form(step_id="init", data_schema=schema, errors=errors)
+
+    async def async_step_register(self, user_input=None):
+        if user_input is not None:
+            return self.async_create_entry(title="", data=self.values)
+        command = (
+            "sudo /usr/local/sbin/ha-ubuntu-compose register "
+            + shlex.quote(self.values["compose_project"]) + " "
+            + shlex.quote(self.values["compose_file"])
+        )
+        return self.async_show_form(
+            step_id="register",
+            data_schema=vol.Schema({
+                vol.Optional("registration_command", default=command): selector.TextSelector(
+                    selector.TextSelectorConfig(multiline=True, read_only=True)
+                ),
+            }),
         )

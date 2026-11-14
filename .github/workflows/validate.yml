@@ -1,0 +1,37 @@
+name: Validate Ubuntu integration
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'custom_components/ubuntu_linux/**'
+      - 'scripts/**'
+      - '.github/workflows/validate.yml'
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  syntax:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate Python syntax
+        run: python3 -m compileall -q custom_components/ubuntu_linux scripts
+      - name: Validate Bash syntax
+        run: |
+          bash -n scripts/install.sh scripts/update.sh scripts/monitor-root.sh
+          bash -n custom_components/ubuntu_linux/assets/install.sh
+          bash -n custom_components/ubuntu_linux/assets/monitor-root.sh
+      - name: Validate integration metadata
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          base = Path('custom_components/ubuntu_linux')
+          for name in ['manifest.json', 'strings.json', 'translations/en.json']:
+              json.loads((base / name).read_text())
+          for name in ['install.sh', 'monitor.py', 'monitor-root.sh', 'compose_helper.py']:
+              assert (base / 'assets' / name).is_file(), name
+          PY

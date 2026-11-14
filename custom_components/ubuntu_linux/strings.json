@@ -30,5 +30,31 @@
     "abort": {
       "already_configured": "This Ubuntu host is already configured"
     }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Docker Compose project",
+        "description": "Optionally select a Docker Compose file on this Ubuntu server. The path is registered locally by an Ubuntu administrator. Leave both fields blank to disable Compose monitoring.",
+        "data": {
+          "compose_project": "Project identifier",
+          "compose_file": "Absolute Compose file path"
+        }
+      },
+      "register": {
+        "title": "Authorize Docker Compose access",
+        "description": "Run this command on the Ubuntu server as an administrator. It registers only this project and Compose file. Then click Submit. The Home Assistant SSH user is not added to the Docker group.",
+        "data": {
+          "registration_command": "Ubuntu administrator registration command"
+        },
+        "data_description": {
+          "registration_command": "Copy and run this command on the monitored Ubuntu server using an administrator account."
+        }
+      }
+    },
+    "error": {
+      "invalid_project": "Enter a valid project identifier (letters, numbers, dots, hyphens or underscores).",
+      "invalid_path": "Enter an absolute Linux file path."
+    }
   }
 }

@@ -45,8 +45,10 @@ chmod 600 "${AUTH}"
 : "${HA_MONITOR_ASSETS:?Missing bundled collector scripts}"
 install -o root -g root -m 755 "${HA_MONITOR_ASSETS}/monitor.py" /usr/local/bin/ha-ubuntu-monitor
 install -o root -g root -m 755 "${HA_MONITOR_ASSETS}/monitor-root.sh" /usr/local/sbin/ha-ubuntu-monitor-root
+install -o root -g root -m 755 "${HA_MONITOR_ASSETS}/compose_helper.py" /usr/local/sbin/ha-ubuntu-compose
 SUDO_FILE="/etc/sudoers.d/ha-ubuntu-monitor"
 printf '%s ALL=(root) NOPASSWD: /usr/local/sbin/ha-ubuntu-monitor-root\n' "${MONITOR_USER}" > "${SUDO_FILE}"
+printf '%s ALL=(root) NOPASSWD: /usr/local/sbin/ha-ubuntu-compose status *, /usr/local/sbin/ha-ubuntu-compose up *, /usr/local/sbin/ha-ubuntu-compose down *, /usr/local/sbin/ha-ubuntu-compose service-up *, /usr/local/sbin/ha-ubuntu-compose service-stop *\n' "${MONITOR_USER}" >> "${SUDO_FILE}"
 chmod 440 "${SUDO_FILE}"
 visudo -cf "${SUDO_FILE}"
 echo "Monitoring installed for user: ${MONITOR_USER}"

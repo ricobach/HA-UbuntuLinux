@@ -31,6 +31,43 @@ Anyone with the URL can download and inspect the installer until it expires or s
 
 The integrated copy page is still available as a link in the installation dialog. Existing monitored hosts are unaffected. To refresh the Ubuntu-side script later, use the separate updater in the section below.
 
+## Docker Compose monitoring and explicit controls (optional)
+
+Docker Compose integration is opt-in, per Ubuntu server. Supported features:
+
+- Discover configured Compose services and each running/stopped container, including multiple replicas.
+- Create status sensors for the project, individual services and individual containers.
+- Create **button** entities for **Project Up**, **Project Down**, **Service Up** and **Service Stop** — no switches and no automatic restart actions.
+- Keep the Docker Compose file and `.env` on Ubuntu. Compose itself handles `${VARIABLE}` interpolation, `env_file:` entries and environment substitution when invoked with the Compose file's directory as the project directory. Home Assistant never downloads the resolved YAML or environment secrets.
+- Each monitoring poll obtains the service definitions using `docker compose config --services` and container state using `docker compose ps -a --format json`; statuses update after pressing buttons.
+
+### Enable Docker Compose on an existing Ubuntu server
+
+1. Update **Ubuntu Linux SSH** in HACS and restart Home Assistant.
+2. Update the Ubuntu helper scripts, as administrator, with the updater below. This installs `/usr/local/sbin/ha-ubuntu-compose` and adds narrowly scoped sudo permissions for its fixed actions. The SSH account is **not** added to the `docker` group.
+3. In Home Assistant, open the Ubuntu Linux SSH integration entry and choose **Configure** (options).
+4. Enter a project identifier (e.g. `awareness`) and the full Compose file path on Ubuntu (e.g. `/opt/docker/awareness/compose.yaml`). The path is to a *file*, not a directory.
+5. The next screen displays an administrator-only command. Run it **locally on Ubuntu**, using your normal sudo-enabled user:
+
+```bash
+sudo /usr/local/sbin/ha-ubuntu-compose register awareness /opt/docker/awareness/compose.yaml
+```
+
+6. Submit in Home Assistant. The integration reloads, discovers configured services and exposes sensors and buttons. Use the **Docker Compose project status** sensor to diagnose configuration issues.
+
+For new hosts, the Home Assistant-hosted installer includes the Compose gateway; only the local project-registration command is needed afterward. To disable monitoring, clear both options. The administrator must explicitly register each project; the SSH monitoring account cannot do so.
+
+### Project versus service operations
+
+- **Project Up**: `docker compose up -d` (may start/recreate services).
+- **Project Down**: `docker compose down` (stops and removes project containers and its default network; named volumes are preserved unless Compose configuration dictates otherwise). **This is potentially disruptive.**
+- **Service Up**: `docker compose up -d SERVICE` (may also start dependencies).
+- **Service Stop**: `docker compose stop SERVICE` (stops rather than removes the service's containers).
+
+Services are read from the Compose configuration, so a service with a variable-supplied image or container name resolves normally through Docker Compose. The remote helper returns only service names, container names, states and health — not `.env` values.
+
+**Security warning:** Docker Compose operations can be equivalent to root privileges on the server (e.g. by starting privileged containers or mounting the host filesystem). Only register Compose files controlled by trusted administrators, protect their directories and referenced `.env` / included files from writes by untrusted users, and carefully restrict access to the Home Assistant control buttons. The gateway has a root-owned allowlist at `/etc/ha-ubuntu-monitor/compose-projects.json` and does not provide arbitrary Docker commands.
+
 ## Human-readable uptime
 
 The **Uptime** sensor displays elapsed time as `70d 0h 35m 19s` instead of a numeric seconds value. The original raw value remains available as the `uptime_seconds` state attribute on that sensor. An additional **Uptime seconds** numeric sensor is created but disabled by default; enable it in entity settings if you need a numeric state for time-series statistics or automations. No Ubuntu-side script update is necessary for this change.
@@ -87,7 +124,7 @@ Run this on the monitored Ubuntu server:
 curl -fsSL https://raw.githubusercontent.com/ricobach/HA-UbuntuLinux/main/scripts/update.sh | sudo bash
 ```
 
-This replaces only `/usr/local/bin/ha-ubuntu-monitor` and `/usr/local/sbin/ha-ubuntu-monitor-root`. It does **not** replace SSH keys, modify the monitoring account, or rewrite sudoers. It downloads both files, validates Python and Bash syntax, and saves previous versions with `.bak` suffixes before installation. The **Monitor script version** sensor reports the version installed on each machine after the next poll. **Run the command above on every existing monitored Ubuntu server** to upgrade its collector to v0.3.0 and enable detailed APT package lists in the Home Assistant Update entity. The Home Assistant integration itself must also be updated through HACS.
+This updates `/usr/local/bin/ha-ubuntu-monitor`, `/usr/local/sbin/ha-ubuntu-monitor-root`, and the optional Compose helper. It does **not** replace SSH keys or modify the monitoring account; it **does add** restricted Compose helper entries to sudoers when needed. It downloads both files, validates Python and Bash syntax, and saves previous versions with `.bak` suffixes before installation. The **Monitor script version** sensor reports the version installed on each machine after the next poll. **Run the command above on every existing monitored Ubuntu server** to upgrade its collector to v0.3.0 and enable detailed APT package lists in the Home Assistant Update entity. The Home Assistant integration itself must also be updated through HACS.
 
 **Security:** Running the updater as root trusts the current contents of the repository's `main` branch. Review the changes before updating and pin the download to a reviewed commit for stronger supply-chain guarantees.
 
@@ -107,7 +144,7 @@ Only the fixed root-owned helper can execute without a password, and it accepts 
 - The one-liner downloads executable code as root. Audit and pin the URL to a reviewed commit for high-assurance environments. Updating from `main` always executes its latest content.
 - **Trust on first use (TOFU):** the first SSH connection pins the key that the remote host presents; later key changes are rejected. The first connection is susceptible to a man-in-the-middle attack if the network is compromised. For high-assurance environments verify the observed key separately.
 - Protect the Home Assistant instance: anyone controlling this integration's private key can access the monitoring account.
-- The monitor is **read-only**; it does not expose arbitrary command execution or systemd control.
+- System monitoring remains read-only. Optional Docker Compose actions are explicit buttons with a root-owned project allowlist. The monitor does not expose arbitrary shell command execution or systemd control.
 - The first version is intended for Ubuntu with systemd, apt, Python 3, OpenSSH, and sudo.
 
 ## Development
