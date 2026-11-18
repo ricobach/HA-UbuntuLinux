@@ -20,7 +20,7 @@ class UbuntuSystemUpdate(CoordinatorEntity, UpdateEntity):
     _attr_name = "Ubuntu system updates"
     _attr_title = "Ubuntu package updates"
     _attr_entity_category = EntityCategory.DIAGNOSTIC
-    _attr_supported_features = UpdateEntityFeature.RELEASE_NOTES | UpdateEntityFeature.INSTALL
+    _attr_supported_features = UpdateEntityFeature.RELEASE_NOTES | UpdateEntityFeature.INSTALL | UpdateEntityFeature.PROGRESS
 
     def __init__(self, coordinator):
         super().__init__(coordinator)
@@ -70,8 +70,22 @@ class UbuntuSystemUpdate(CoordinatorEntity, UpdateEntity):
         return self.has_update
 
     @property
+    def in_progress(self):
+        """Show background systemd operation state in the native update dialog."""
+        maintenance = self.coordinator.data.get("maintenance")
+        return (
+            isinstance(maintenance, dict)
+            and maintenance.get("operation") == "install"
+            and maintenance.get("state") in ("queued", "running")
+        )
+
+    @property
     def release_summary(self):
         count = self._count
+        maintenance = self.coordinator.data.get("maintenance")
+        if isinstance(maintenance, dict) and maintenance.get("operation") == "install":
+            if maintenance.get("state") in ("queued", "running"):
+                return "Ubuntu package installation in progress: " + str(maintenance.get("phase", "starting"))
         if count is None:
             return "APT package update information is unavailable."
         if count == 0:

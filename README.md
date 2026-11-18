@@ -70,7 +70,7 @@ Services are read from the Compose configuration, so a service with a variable-s
 
 ## Remote Ubuntu APT maintenance (opt-in actions)
 
-Home Assistant now provides three explicit controls on each Ubuntu server:
+Home Assistant now provides three explicit controls on each Ubuntu server. The Update entity also reports an in-progress state while installation is running:
 
 - **Check for system updates** (button): schedules `apt-get update` to refresh package indexes.
 - **Ubuntu system updates** (native Update entity): its **Install** action schedules `apt-get update` followed by `apt-get -y upgrade`. This installs ordinary package upgrades only; it does not run dist-upgrade/full-upgrade or automatically reboot.
@@ -116,7 +116,7 @@ Enter a **Server Name**, Ubuntu hostname or IP, SSH port, and monitoring account
 
 Open the **installation command with Copy button** link in the setup dialog to copy the exact one-line command with one click (requires browser clipboard permissions and HTTPS or localhost). A read-only selectable command field remains available as a fallback. The page is served by Home Assistant behind a random 30-minute link and contains only the generated public SSH key, never the private key. Run the command, on Ubuntu, then click **Submit** in Home Assistant. The integration tests SSH access and discovers the server's host key automatically. No fingerprint needs to be entered.\n\n### Ubuntu updates and reboot monitoring
 
-The **Updates available** sensor counts packages in the local APT cache (`apt list --upgradable`). Monitor script v0.3.0 also returns package names, installed versions, available versions and the Ubuntu release to Home Assistant. It does not refresh APT indexes automatically; use Ubuntu's regular background APT updates or run `sudo apt update` to refresh those indexes. The **Reboot required** binary sensor checks for `/var/run/reboot-required`. Neither sensor installs packages nor reboots the server.
+The **Updates available** sensor counts packages in the local APT cache (`apt list --upgradable`). Monitor script v0.3.0 and newer returns package names, installed versions, available versions and the Ubuntu release to Home Assistant. It does not refresh APT indexes automatically; use Ubuntu's regular background APT updates or run `sudo apt update` to refresh those indexes. The **Reboot required** binary sensor checks for `/var/run/reboot-required`. Neither sensor installs packages nor reboots the server.
 
 ### System update alert in Home Assistant
 
@@ -155,7 +155,7 @@ Run this on the monitored Ubuntu server:
 curl -fsSL https://raw.githubusercontent.com/ricobach/HA-UbuntuLinux/main/scripts/update.sh | sudo bash
 ```
 
-This updates `/usr/local/bin/ha-ubuntu-monitor`, `/usr/local/sbin/ha-ubuntu-monitor-root`, and the optional Compose helper. It does **not** replace SSH keys or modify the monitoring account; it **does add** restricted Compose helper entries to sudoers when needed. It downloads both files, validates Python and Bash syntax, and saves previous versions with `.bak` suffixes before installation. The **Monitor script version** sensor reports the version installed on each machine after the next poll. **Run the command above on every existing monitored Ubuntu server** to upgrade its collector to v0.3.0 and enable detailed APT package lists in the Home Assistant Update entity. The Home Assistant integration itself must also be updated through HACS.
+This updates `/usr/local/bin/ha-ubuntu-monitor`, `/usr/local/sbin/ha-ubuntu-monitor-root`, and the optional Compose helper. It does **not** replace SSH keys or modify the monitoring account; it **does add** restricted Compose helper entries to sudoers when needed. It downloads both files, validates Python and Bash syntax, and saves previous versions with `.bak` suffixes before installation. The **Monitor script version** sensor reports the version installed on each machine after the next poll. **Run the command above on every existing monitored Ubuntu server** to upgrade its collector to v0.4.0, enable maintenance tracking and detailed APT package lists in the Home Assistant Update entity. The Home Assistant integration itself must also be updated through HACS.
 
 **Security:** Running the updater as root trusts the current contents of the repository's `main` branch. Review the changes before updating and pin the download to a reviewed commit for stronger supply-chain guarantees.
 
