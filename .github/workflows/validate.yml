@@ -24,6 +24,8 @@ jobs:
           bash -n scripts/install.sh scripts/update.sh scripts/monitor-root.sh
           bash -n custom_components/ubuntu_linux/assets/install.sh
           bash -n custom_components/ubuntu_linux/assets/monitor-root.sh
+      - name: Test maintenance helper
+        run: python3 -m unittest discover -s tests -v
       - name: Validate integration metadata
         run: |
           python3 - <<'PY'

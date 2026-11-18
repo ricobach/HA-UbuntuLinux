@@ -113,7 +113,7 @@ def execute_worker(operation, unit):
                 env={**os.environ, "DEBIAN_FRONTEND": "noninteractive",
                      "APT_LISTCHANGES_FRONTEND": "none"},
                 check=False, timeout=7200,
-                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                stdout=None, stderr=None,
             )
             if process.returncode != 0:
                 success = False
@@ -171,7 +171,8 @@ def reboot():
         raise ValueError("Reboot blocked while maintenance is running")
     completed = subprocess.run(
         ["/usr/bin/systemd-run", "--quiet", "--collect", "--on-active=5s",
-         "--unit=ha-ubuntu-requested-reboot", "/usr/bin/systemctl", "reboot"],
+         f"--unit=ha-ubuntu-requested-reboot-{int(time.time())}",
+         "/usr/bin/systemctl", "reboot"],
         check=False, timeout=20,
         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
     )
