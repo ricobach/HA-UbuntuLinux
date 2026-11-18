@@ -14,6 +14,7 @@ DESCRIPTIONS = (
     SensorEntityDescription(key="uptime_seconds", name="Uptime"),
     SensorEntityDescription(key="uptime_raw_seconds", name="Uptime seconds", native_unit_of_measurement="s", device_class=SensorDeviceClass.DURATION, state_class=SensorStateClass.MEASUREMENT, entity_registry_enabled_default=False),
     SensorEntityDescription(key="updates_available", name="Updates available", state_class=SensorStateClass.MEASUREMENT),
+    SensorEntityDescription(key="updates_deferred", name="Updates deferred or kept back", state_class=SensorStateClass.MEASUREMENT),
     SensorEntityDescription(key="failed_services", name="Failed systemd units", state_class=SensorStateClass.MEASUREMENT),
 )
 

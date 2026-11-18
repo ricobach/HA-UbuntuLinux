@@ -50,5 +50,8 @@ class UbuntuBinarySensor(CoordinatorEntity, BinarySensorEntity):
     @property
     def extra_state_attributes(self):
         if self.entity_description.key == "system_updates_available":
-            return {"package_count": self.coordinator.data.get("updates_available")}
+            return {
+                "package_count": self.coordinator.data.get("updates_available"),
+                "deferred_count": self.coordinator.data.get("updates_deferred"),
+            }
         return None

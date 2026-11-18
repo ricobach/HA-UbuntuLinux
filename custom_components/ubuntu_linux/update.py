@@ -89,10 +89,16 @@ class UbuntuSystemUpdate(CoordinatorEntity, UpdateEntity):
         if count is None:
             return "APT package update information is unavailable."
         if count == 0:
-            return "No APT package upgrades are pending in the local package cache."
+            deferred = self.coordinator.data.get("updates_deferred")
+            if isinstance(deferred, int) and deferred:
+                return f"No installable updates. {deferred} package(s) deferred or kept back."
+            return "No installable APT package upgrades are pending."
         packages = self.coordinator.data.get("update_packages") or []
         preview = ", ".join(str(p.get("package", "")) for p in packages[:5])
-        intro = f"{count} Ubuntu package update(s) pending."
+        intro = f"{count} installable Ubuntu package update(s) pending."
+        deferred = self.coordinator.data.get("updates_deferred")
+        if isinstance(deferred, int) and deferred:
+            intro += f" {deferred} deferred or kept back."
         if preview:
             intro += f" Including: {preview}."
         if len(packages) > 5:
@@ -106,13 +112,11 @@ class UbuntuSystemUpdate(CoordinatorEntity, UpdateEntity):
         count = self._count
         if count is None:
             return "Ubuntu package information is currently unavailable."
-        if count == 0:
-            return "No package upgrades are pending in the local APT cache."
         packages = self.coordinator.data.get("update_packages") or []
         lines = [
             f"## Ubuntu {self.coordinator.data.get('ubuntu_version', '')} package updates",
             "",
-            f"**{count} package update(s) pending.**",
+            f"**{count} installable package update(s) pending.**",
             "",
             "APT uses locally cached package indexes; run `sudo apt update` on the server to refresh them.",
             "Select Install to schedule a background APT upgrade. Reboot is always separate.",
@@ -120,6 +124,13 @@ class UbuntuSystemUpdate(CoordinatorEntity, UpdateEntity):
         ]
         if self.coordinator.data.get("reboot_required"):
             lines.extend(["**A system reboot is required.**", ""])
+        deferred_count = self.coordinator.data.get("updates_deferred")
+        if isinstance(deferred_count, int) and deferred_count:
+            lines.extend([
+                f"**{deferred_count} additional package(s) deferred or kept back.**",
+                "They are excluded from the update count and do not trigger Update available.",
+                "",
+            ])
         if packages:
             lines.extend(["### Pending packages", ""])
             for package in packages:
@@ -130,8 +141,21 @@ class UbuntuSystemUpdate(CoordinatorEntity, UpdateEntity):
                 lines.append(f"- **{name}**: `{installed}` → `{available}`")
             if count > len(packages):
                 lines.extend(["", f"_Showing {len(packages)} of {count} updates._"])
+        elif count:
+            lines.append("Installable package details are unavailable. Upgrade the Ubuntu monitoring script.")
         else:
-            lines.append("The server is running an older monitoring script that does not return package details. Update its monitoring scripts to see the complete list.")
+            lines.append("No updates are currently installable.")
+        deferred_packages = self.coordinator.data.get("deferred_packages") or []
+        if deferred_packages:
+            lines.extend(["", "### Deferred or kept-back packages", "",
+                          "_Includes phased rollouts, held packages, and other packages not selected by APT. These are not automatically installed._", ""])
+            for package in deferred_packages:
+                name = str(package.get("package", "")).replace("`", "")
+                installed = str(package.get("installed", "?")).replace("`", "")
+                available = str(package.get("available", "?")).replace("`", "")
+                lines.append(f"- **{name}**: `{installed}` → `{available}`")
+            if isinstance(deferred_count, int) and deferred_count > len(deferred_packages):
+                lines.extend(["", f"_Showing {len(deferred_packages)} of {deferred_count} deferred items._"])
         return "\n".join(lines)[:MAX_RELEASE_NOTES_CHARS]
 
 
@@ -154,6 +178,8 @@ class UbuntuSystemUpdate(CoordinatorEntity, UpdateEntity):
         """Keep entity state small; detailed package lists belong in release notes."""
         return {
             "package_count": self._count,
+            "deferred_count": self.coordinator.data.get("updates_deferred"),
+            "total_candidates": self.coordinator.data.get("updates_total"),
             "reboot_required": self.coordinator.data.get("reboot_required"),
             "maintenance": self.coordinator.data.get("maintenance"),
         }

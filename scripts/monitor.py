@@ -9,7 +9,7 @@ import socket
 import subprocess
 import time
 
-MONITOR_VERSION = "0.4.0"
+MONITOR_VERSION = "0.5.0"
 MAX_UPDATE_DETAILS = 150
 UPGRADABLE = re.compile(
     r"^(?P<package>[^/\s]+)/(?P<repository>\S+)\s+"
@@ -61,31 +61,58 @@ def ubuntu_version():
     return "unknown"
 
 
-def pending_updates():
-    """Read cached APT candidates without refreshing indexes or changing packages.
+SIMULATED_INSTALL = re.compile(r"^Inst\s+(?P<package>\S+)")
 
-    Return (count, details). APT output may include repositories and versions;
-    preserve exact package versions without inferring security origin.
+
+def pending_updates():
+    """Count only upgrades that APT would install on THIS Ubuntu machine.
+
+    apt list --upgradable includes phased, held, and dependency-blocked items.
+    APT's simulation uses the same machine-id and phasing policy as the actual
+    apt-get upgrade action. Never force phased updates into the simulation.
+    If the simulation fails, return unknown instead of a misleading zero.
     """
-    result = run(["apt", "list", "--upgradable"], 12)
-    if result is None or result.returncode != 0:
-        return None, []
-    count = 0
-    details = []
-    for line in result.stdout.splitlines():
+    listing = run(["apt", "list", "--upgradable"], 10)
+    simulation = run(
+        ["apt-get", "-s", "upgrade"], 14
+    )
+    if (listing is None or simulation is None
+            or listing.returncode != 0 or simulation.returncode != 0):
+        return None, [], None, [], None
+    candidates = {}
+    for line in listing.stdout.splitlines():
         match = UPGRADABLE.match(line.strip())
-        if match is None:
-            continue
-        count += 1
-        if len(details) < MAX_UPDATE_DETAILS:
-            details.append({
+        if match is not None:
+            candidates[match["package"]] = {
                 "package": match["package"],
                 "installed": match["installed"],
                 "available": match["available"],
                 "repository": match["repository"],
-            })
-    return count, details
-
+            }
+    planned = set()
+    for line in simulation.stdout.splitlines():
+        match = SIMULATED_INSTALL.match(line)
+        if match:
+            planned.add(match["package"])
+    # apt list and apt-get -s may render the architecture qualification
+    # differently. Match exact names first, then the unambiguous base name.
+    by_base = {}
+    for name in candidates:
+        by_base.setdefault(name.split(":", 1)[0], []).append(name)
+    selected = set()
+    for package in planned:
+        if package in candidates:
+            selected.add(package)
+        elif ":" not in package:
+            names = by_base.get(package, [])
+            if len(names) == 1:
+                selected.add(names[0])
+    ready = [detail for name, detail in candidates.items() if name in selected]
+    deferred = [detail for name, detail in candidates.items() if name not in selected]
+    # Deferred can include phased rollouts, held packages and dependencies.
+    # Do not label all deferred packages as phased.
+    return (len(ready), ready[:MAX_UPDATE_DETAILS],
+            len(deferred), deferred[:MAX_UPDATE_DETAILS], len(candidates))
 
 def main():
     disk = shutil.disk_usage("/")
@@ -98,7 +125,7 @@ def main():
             failed = int(root.stdout.strip())
         except ValueError:
             pass
-    update_count, update_details = pending_updates()
+    update_count, update_details, deferred_count, deferred_details, total_count = pending_updates()
     maintenance = None
     maintenance_result = run(
         ["sudo", "-n", "/usr/local/sbin/ha-ubuntu-maintenance", "status"], 8
@@ -124,6 +151,9 @@ def main():
         "uptime_seconds": uptime,
         "updates_available": update_count,
         "update_packages": update_details,
+        "updates_deferred": deferred_count,
+        "deferred_packages": deferred_details,
+        "updates_total": total_count,
         "maintenance": maintenance,
         "failed_services": failed,
         "reboot_required": os.path.exists("/var/run/reboot-required"),

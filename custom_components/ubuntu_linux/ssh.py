@@ -40,7 +40,7 @@ async def fetch_metrics_with_host_key(host, port, user, private_key, fingerprint
         connect_timeout=10,
         login_timeout=10,
     ) as conn:
-        result = await asyncio.wait_for(conn.run(COMMAND, check=True), timeout=20)
+        result = await asyncio.wait_for(conn.run(COMMAND, check=True), timeout=50)
     data = json.loads(result.stdout)
     if not isinstance(data, dict) or data.get("schema") != 1:
         raise ValueError("Unexpected response from Ubuntu monitor")
