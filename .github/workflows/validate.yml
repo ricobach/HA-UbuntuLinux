@@ -32,6 +32,6 @@ jobs:
           base = Path('custom_components/ubuntu_linux')
           for name in ['manifest.json', 'strings.json', 'translations/en.json']:
               json.loads((base / name).read_text())
-          for name in ['install.sh', 'monitor.py', 'monitor-root.sh', 'compose_helper.py']:
+          for name in ['install.sh', 'monitor.py', 'monitor-root.sh', 'compose_helper.py', 'maintenance_helper.py']:
               assert (base / 'assets' / name).is_file(), name
           PY

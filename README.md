@@ -68,6 +68,37 @@ Services are read from the Compose configuration, so a service with a variable-s
 
 **Security warning:** Docker Compose operations can be equivalent to root privileges on the server (e.g. by starting privileged containers or mounting the host filesystem). Only register Compose files controlled by trusted administrators, protect their directories and referenced `.env` / included files from writes by untrusted users, and carefully restrict access to the Home Assistant control buttons. The gateway has a root-owned allowlist at `/etc/ha-ubuntu-monitor/compose-projects.json` and does not provide arbitrary Docker commands.
 
+## Remote Ubuntu APT maintenance (opt-in actions)
+
+Home Assistant now provides three explicit controls on each Ubuntu server:
+
+- **Check for system updates** (button): schedules `apt-get update` to refresh package indexes.
+- **Ubuntu system updates** (native Update entity): its **Install** action schedules `apt-get update` followed by `apt-get -y upgrade`. This installs ordinary package upgrades only; it does not run dist-upgrade/full-upgrade or automatically reboot.
+- **Reboot Ubuntu server** (button): schedules `systemctl reboot` with a five-second delay and refuses while APT maintenance is active.
+
+APT operations run under a **transient systemd unit** independently of the SSH session. Home Assistant polls the following entities every 60 seconds:
+
+| Entity | Value |
+| --- | --- |
+| System maintenance in progress | On for queued/running jobs; off otherwise |
+| System maintenance status | idle, queued, running, success, or failed |
+| System maintenance phase | scheduled, refreshing, installing, complete, error, interrupted |
+| Last maintenance result | success description or failure diagnostic |
+| Last maintenance start | UTC ISO 8601 time |
+| Last maintenance completion | UTC ISO 8601 time |
+
+Only fixed verbs `status`, `check`, `install`, and `reboot` are allowed via the root-owned `/usr/local/sbin/ha-ubuntu-maintenance` helper. The `worker` verb is **not** delegated to the SSH account in sudoers. No package names, flags, shell snippets, or commands are accepted from Home Assistant.
+
+**Existing Ubuntu hosts must run the updated installer for scripts only:**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/ricobach/HA-UbuntuLinux/main/scripts/update.sh | sudo bash
+```
+
+This installs the maintenance helper and adds *exact* helper commands to `/etc/sudoers.d/ha-ubuntu-monitor`. SSH keys and the monitoring user are unchanged. New server enrollments receive the helper from the Home Assistant-hosted installer.
+
+Operations may fail if Ubuntu's unattended APT jobs hold the package-manager lock, repositories are unreachable, or updates require interactive intervention. The result sensor reports failures; full details remain in the systemd journal on Ubuntu. Upgrades are **never scheduled automatically** by the integration. Restrict access to the Home Assistant Install and Reboot controls, and schedule maintenance with service downtime in mind.
+
 ## Human-readable uptime
 
 The **Uptime** sensor displays elapsed time as `70d 0h 35m 19s` instead of a numeric seconds value. The original raw value remains available as the `uptime_seconds` state attribute on that sensor. An additional **Uptime seconds** numeric sensor is created but disabled by default; enable it in entity settings if you need a numeric state for time-series statistics or automations. No Ubuntu-side script update is necessary for this change.
@@ -92,7 +123,7 @@ The **Updates available** sensor counts packages in the local APT cache (`apt li
 The integration provides three update-related entities (the update dialog's package list requires Ubuntu monitor script **0.3.0 or newer**):
 
 - **Updates available** (numeric sensor): number of upgradable APT packages.
-- **Ubuntu system updates** (read-only Update entity): appears in Home Assistant's update interface when upgrades are pending. Its installed version identifies the Ubuntu release and its latest-version label indicates how many package updates are pending. **Release notes** shows the list of upgradable packages with installed and candidate versions. No remote installation feature is enabled.\n- **System updates available** (binary sensor): `on` when the package count is greater than zero, `off` when zero, and `unknown` when the count cannot be read. Its `package_count` attribute contains the count.
+- **Ubuntu system updates** (read-only Update entity): appears in Home Assistant's update interface when upgrades are pending. Its installed version identifies the Ubuntu release and its latest-version label indicates how many package updates are pending. **Release notes** shows the list of upgradable packages with installed and candidate versions. The Install action explicitly schedules an APT upgrade.\n- **System updates available** (binary sensor): `on` when the package count is greater than zero, `off` when zero, and `unknown` when the count cannot be read. Its `package_count` attribute contains the count.
 
 To notify when updates first become available, create an automation using your actual entity ID and mobile notification service:
 
@@ -114,7 +145,7 @@ actions:
 mode: single
 ```
 
-You can alternatively create an automation triggered by the state of `update.<your_server>_ubuntu_system_updates` changing to `on`. Home Assistant's Update entity has no install action for this integration.\n\nThis alerts when the sensor transitions to `on`, including after an unavailable or unknown state. It does not automatically upgrade the system. APT indexes must still be refreshed regularly for fresh update counts.
+You can alternatively create an automation triggered by the state of `update.<your_server>_ubuntu_system_updates` changing to `on`. Home Assistant's Update entity also has an explicit Install action.\n\nThis alerts when the sensor transitions to `on`, including after an unavailable or unknown state. It does not automatically upgrade the system. APT indexes must still be refreshed regularly for fresh update counts.
 
 ### Updating the Ubuntu monitoring scripts
 
@@ -144,7 +175,7 @@ Only the fixed root-owned helper can execute without a password, and it accepts 
 - The one-liner downloads executable code as root. Audit and pin the URL to a reviewed commit for high-assurance environments. Updating from `main` always executes its latest content.
 - **Trust on first use (TOFU):** the first SSH connection pins the key that the remote host presents; later key changes are rejected. The first connection is susceptible to a man-in-the-middle attack if the network is compromised. For high-assurance environments verify the observed key separately.
 - Protect the Home Assistant instance: anyone controlling this integration's private key can access the monitoring account.
-- System monitoring remains read-only. Optional Docker Compose actions are explicit buttons with a root-owned project allowlist. The monitor does not expose arbitrary shell command execution or systemd control.
+- System monitoring remains read-only. Optional maintenance and Docker Compose actions require explicit user interaction. Docker Compose actions are buttons with a root-owned project allowlist. The monitor does not expose arbitrary shell command execution or systemd control.
 - The first version is intended for Ubuntu with systemd, apt, Python 3, OpenSSH, and sudo.
 
 ## Development

@@ -21,6 +21,16 @@ DESCRIPTIONS = (
 async def async_setup_entry(hass, entry, async_add_entities):
     coordinator = hass.data[DOMAIN][entry.entry_id]
     async_add_entities(UbuntuSensor(coordinator, description) for description in DESCRIPTIONS)
+    async_add_entities(
+        UbuntuMaintenanceSensor(coordinator, field, label)
+        for field, label in (
+            ("state", "System maintenance status"),
+            ("phase", "System maintenance phase"),
+            ("result", "Last maintenance result"),
+            ("started_at", "Last maintenance start"),
+            ("finished_at", "Last maintenance completion"),
+        )
+    )
     if entry.options.get("compose_project"):
         async_add_entities([DockerComposeProjectSensor(coordinator)])
         discovered = set()
@@ -224,3 +234,37 @@ class DockerComposeContainerSensor(CoordinatorEntity, SensorEntity):
     def extra_state_attributes(self):
         container = self._container or {}
         return {"service": self.service, "health": container.get("health")}
+
+class UbuntuMaintenanceSensor(CoordinatorEntity, SensorEntity):
+    """Expose persistent background maintenance status."""
+
+    _attr_has_entity_name = True
+    _attr_icon = "mdi:package-up"
+
+    def __init__(self, coordinator, field, name):
+        super().__init__(coordinator)
+        self.field = field
+        self._attr_name = name
+        self._attr_unique_id = f"{coordinator.entry.entry_id}_maintenance_{field}"
+
+    @property
+    def device_info(self):
+        return DeviceInfo(
+            identifiers={(DOMAIN, self.coordinator.entry.entry_id)},
+            name=self.coordinator.entry.title,
+            manufacturer="Ubuntu",
+            model=self.coordinator.data.get("os", "Linux"),
+        )
+
+    @property
+    def native_value(self):
+        maintenance = self.coordinator.data.get("maintenance")
+        return maintenance.get(self.field) if isinstance(maintenance, dict) else None
+
+    @property
+    def extra_state_attributes(self):
+        maintenance = self.coordinator.data.get("maintenance")
+        if self.field == "state" and isinstance(maintenance, dict):
+            return {"operation": maintenance.get("operation"),
+                    "unit": maintenance.get("unit")}
+        return None

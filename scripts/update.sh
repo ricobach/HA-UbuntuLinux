@@ -37,10 +37,17 @@ import ast, pathlib, sys
 ast.parse(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))
 PY
 
+curl --fail --silent --show-error --location --proto '=https' --tlsv1.2 "${base}/maintenance_helper.py" -o "${stage}/maintenance_helper.py"
+python3 - "${stage}/maintenance_helper.py" <<'PY'
+import ast, pathlib, sys
+ast.parse(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))
+PY
+
 # Preserve existing scripts as backups in case rollback is needed.
 for spec in "monitor.py:/usr/local/bin/ha-ubuntu-monitor" \
             "monitor-root.sh:/usr/local/sbin/ha-ubuntu-monitor-root" \
-            "compose_helper.py:/usr/local/sbin/ha-ubuntu-compose"; do
+            "compose_helper.py:/usr/local/sbin/ha-ubuntu-compose" \
+            "maintenance_helper.py:/usr/local/sbin/ha-ubuntu-maintenance"; do
     source="${spec%%:*}"
     target="${spec#*:}"
     if [[ -f "${target}" ]]; then
@@ -58,6 +65,14 @@ if [[ -f "${SUDO_FILE}" ]] && ! grep -q 'ha-ubuntu-compose status' "${SUDO_FILE}
     visudo -cf "${SUDO_FILE}"
   fi
 fi
+if [[ -f "${SUDO_FILE}" ]] && ! grep -q 'ha-ubuntu-maintenance status' "${SUDO_FILE}"; then
+  monitor_user="$(awk '/ha-ubuntu-monitor-root/ {print $1; exit}' "${SUDO_FILE}")"
+  if [[ -n "${monitor_user}" ]]; then
+    printf '%s ALL=(root) NOPASSWD: /usr/local/sbin/ha-ubuntu-maintenance status, /usr/local/sbin/ha-ubuntu-maintenance check, /usr/local/sbin/ha-ubuntu-maintenance install, /usr/local/sbin/ha-ubuntu-maintenance reboot\n' "${monitor_user}" >> "${SUDO_FILE}"
+    chmod 440 "${SUDO_FILE}"
+    visudo -cf "${SUDO_FILE}"
+  fi
+fi
 echo "Updated Ubuntu monitoring scripts."
 echo "Version: $(/usr/local/bin/ha-ubuntu-monitor | python3 -c 'import json,sys; print(json.load(sys.stdin).get("monitor_version", "unknown"))')"
-echo "The SSH monitoring account, authorized_keys, and sudoers configuration were not modified."
+echo "Existing SSH credentials are unchanged; sudoers maintenance permissions were added if needed."

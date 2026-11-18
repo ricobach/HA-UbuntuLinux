@@ -20,7 +20,7 @@ class UbuntuSystemUpdate(CoordinatorEntity, UpdateEntity):
     _attr_name = "Ubuntu system updates"
     _attr_title = "Ubuntu package updates"
     _attr_entity_category = EntityCategory.DIAGNOSTIC
-    _attr_supported_features = UpdateEntityFeature.RELEASE_NOTES
+    _attr_supported_features = UpdateEntityFeature.RELEASE_NOTES | UpdateEntityFeature.INSTALL
 
     def __init__(self, coordinator):
         super().__init__(coordinator)
@@ -101,7 +101,7 @@ class UbuntuSystemUpdate(CoordinatorEntity, UpdateEntity):
             f"**{count} package update(s) pending.**",
             "",
             "APT uses locally cached package indexes; run `sudo apt update` on the server to refresh them.",
-            "This integration does not install updates.",
+            "Select Install to schedule a background APT upgrade. Reboot is always separate.",
             "",
         ]
         if self.coordinator.data.get("reboot_required"):
@@ -120,10 +120,26 @@ class UbuntuSystemUpdate(CoordinatorEntity, UpdateEntity):
             lines.append("The server is running an older monitoring script that does not return package details. Update its monitoring scripts to see the complete list.")
         return "\n".join(lines)[:MAX_RELEASE_NOTES_CHARS]
 
+
+    async def async_install(self, version=None, backup=False, **kwargs):
+        """Schedule an explicit APT upgrade and return without waiting for it."""
+        from homeassistant.exceptions import HomeAssistantError
+
+        maintenance = self.coordinator.data.get("maintenance")
+        if not isinstance(maintenance, dict):
+            raise HomeAssistantError(
+                "Ubuntu maintenance helper is missing. Run scripts/update.sh "
+                "on the monitored server."
+            )
+        if maintenance.get("state") in ("queued", "running"):
+            raise HomeAssistantError("Ubuntu maintenance is already in progress")
+        await self.coordinator.async_maintenance_action("install")
+
     @property
     def extra_state_attributes(self):
         """Keep entity state small; detailed package lists belong in release notes."""
         return {
             "package_count": self._count,
             "reboot_required": self.coordinator.data.get("reboot_required"),
+            "maintenance": self.coordinator.data.get("maintenance"),
         }

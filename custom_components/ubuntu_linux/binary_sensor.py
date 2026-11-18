@@ -7,6 +7,7 @@ from .const import DOMAIN
 DESCRIPTIONS = (
     BinarySensorEntityDescription(key="reboot_required", name="Reboot required"),
     BinarySensorEntityDescription(key="system_updates_available", name="System updates available"),
+    BinarySensorEntityDescription(key="maintenance_running", name="System maintenance in progress"),
 )
 
 
@@ -33,6 +34,11 @@ class UbuntuBinarySensor(CoordinatorEntity, BinarySensorEntity):
 
     @property
     def is_on(self):
+        if self.entity_description.key == "maintenance_running":
+            maintenance = self.coordinator.data.get("maintenance")
+            if not isinstance(maintenance, dict):
+                return None
+            return maintenance.get("state") in ("running", "queued")
         if self.entity_description.key == "system_updates_available":
             count = self.coordinator.data.get("updates_available")
             # Unknown must not be interpreted as 'no updates'.

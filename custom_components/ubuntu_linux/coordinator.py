@@ -1,7 +1,7 @@
 """Shared poller for one Ubuntu host."""
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from .const import DOMAIN, SCAN_INTERVAL
-from .ssh import fetch_metrics, compose_command
+from .ssh import fetch_metrics, compose_command, maintenance_command
 
 
 class UbuntuCoordinator(DataUpdateCoordinator):
@@ -38,4 +38,16 @@ class UbuntuCoordinator(DataUpdateCoordinator):
             raise ValueError("No Docker Compose project configured")
         result = await compose_command(self.entry, action, project, service)
         await self.async_request_refresh()
+        return result
+
+    async def async_maintenance_action(self, action):
+        """Start an explicitly requested maintenance job or a delayed reboot."""
+        if action not in ("check", "install", "reboot"):
+            raise ValueError("Unsupported maintenance action")
+        result = await maintenance_command(self.entry, action)
+        if not result.get("accepted"):
+            raise ValueError("Ubuntu rejected maintenance request")
+        # A reboot disconnects SSH shortly afterward; do not block on refresh.
+        if action != "reboot":
+            await self.async_request_refresh()
         return result

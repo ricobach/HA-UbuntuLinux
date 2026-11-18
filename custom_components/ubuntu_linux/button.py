@@ -7,6 +7,10 @@ from .const import DOMAIN
 
 async def async_setup_entry(hass, entry, async_add_entities):
     coordinator = hass.data[DOMAIN][entry.entry_id]
+    async_add_entities([
+        UbuntuMaintenanceButton(coordinator, "check", "Check for system updates"),
+        UbuntuMaintenanceButton(coordinator, "reboot", "Reboot Ubuntu server"),
+    ])
     if not entry.options.get("compose_project"):
         return
     project = entry.options["compose_project"]
@@ -62,3 +66,28 @@ class DockerComposeActionButton(CoordinatorEntity, ButtonEntity):
     async def async_press(self):
         """Execute a requested action only when a button is pressed."""
         await self.coordinator.async_compose_action(self.action, self.service)
+
+class UbuntuMaintenanceButton(CoordinatorEntity, ButtonEntity):
+    """Explicit check/reboot controls without a switch."""
+
+    _attr_has_entity_name = True
+    _attr_entity_category = EntityCategory.CONFIG
+
+    def __init__(self, coordinator, action, name):
+        super().__init__(coordinator)
+        self.action = action
+        self._attr_name = name
+        self._attr_unique_id = f"{coordinator.entry.entry_id}_maintenance_{action}"
+        self._attr_icon = "mdi:refresh" if action == "check" else "mdi:restart"
+
+    @property
+    def device_info(self):
+        return DeviceInfo(
+            identifiers={(DOMAIN, self.coordinator.entry.entry_id)},
+            name=self.coordinator.entry.title,
+            manufacturer="Ubuntu",
+            model=self.coordinator.data.get("os", "Linux"),
+        )
+
+    async def async_press(self):
+        await self.coordinator.async_maintenance_action(self.action)

@@ -84,3 +84,25 @@ async def compose_command(entry, action, project, service=None):
                                or not isinstance(data.get("containers"), list)):
         raise ValueError("Invalid Docker Compose status response")
     return data
+
+async def maintenance_command(entry, action):
+    """Invoke an allowlisted APT maintenance action with the pinned SSH key."""
+    if action not in ("status", "check", "install", "reboot"):
+        raise ValueError("Unsupported maintenance operation")
+    client = HostKeyClient(entry.data["fingerprint"])
+    async with asyncssh.connect(
+        entry.data["host"], port=entry.data["port"], username=entry.data["username"],
+        client_keys=[asyncssh.import_private_key(entry.data["private_key"])],
+        known_hosts=([], [], []), client_factory=lambda: client,
+        connect_timeout=10, login_timeout=10,
+    ) as connection:
+        result = await asyncio.wait_for(
+            connection.run(
+                "/usr/bin/sudo -n /usr/local/sbin/ha-ubuntu-maintenance " + action,
+                check=True,
+            ), timeout=35,
+        )
+    response = json.loads(result.stdout)
+    if not isinstance(response, dict):
+        raise ValueError("Invalid maintenance response")
+    return response

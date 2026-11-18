@@ -9,7 +9,7 @@ import socket
 import subprocess
 import time
 
-MONITOR_VERSION = "0.3.0"
+MONITOR_VERSION = "0.4.0"
 MAX_UPDATE_DETAILS = 150
 UPGRADABLE = re.compile(
     r"^(?P<package>[^/\s]+)/(?P<repository>\S+)\s+"
@@ -99,6 +99,17 @@ def main():
         except ValueError:
             pass
     update_count, update_details = pending_updates()
+    maintenance = None
+    maintenance_result = run(
+        ["sudo", "-n", "/usr/local/sbin/ha-ubuntu-maintenance", "status"], 8
+    )
+    if maintenance_result and maintenance_result.returncode == 0:
+        try:
+            value = json.loads(maintenance_result.stdout)
+            if isinstance(value, dict):
+                maintenance = value
+        except ValueError:
+            pass
     print(json.dumps({
         "schema": 1,
         "monitor_version": MONITOR_VERSION,
@@ -113,6 +124,7 @@ def main():
         "uptime_seconds": uptime,
         "updates_available": update_count,
         "update_packages": update_details,
+        "maintenance": maintenance,
         "failed_services": failed,
         "reboot_required": os.path.exists("/var/run/reboot-required"),
     }))
